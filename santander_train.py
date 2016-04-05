@@ -25,12 +25,10 @@ def get_arguments(argv):
                         help='data folder')
     parser.add_argument('-k', '--kfold', metavar='NFOLD', type=int, default=5, 
                         help='k for kfold cross-validtion. If the value less than 2, we skip the cross-validation and choose the first parameter of -c (DEFAULT: 5)')
+    parser.add_argument('-o', '--output_result', metavar='OUTPUT_RESULT', default='result.csv', 
+                        help='output, results file name (DEFAULT: result.csv)')
     parser.add_argument('-m', '--output_model', metavar='OUTPUT_MODEL', default='model.pkl', 
                         help='output, model file name (DEFAULT: model.pkl)')
-    parser.add_argument('-p', '--output_predict', metavar='OUTPUT_PREDICT', default='predict.pkl', 
-                        help='output, predict file name (DEFAULT: predict.pkl)')
-    parser.add_argument('-f', '--output_confidence', metavar='OUTPUT_CONFIDENCE', default='confidence.pkl', 
-                        help='output, confidence-level file name (DEFAULT: confidence.pkl)')
     parser.add_argument('-c', '--Cs', metavar='C', type=parse_list, default=[1.0], 
                         help='SVM parameter (DEFAULT: 1). This can be a list expression, e.g., 0.1,1,10,100')
     
@@ -51,10 +49,11 @@ def my_read_file(fname, logger, is_train=True):
             break
 
     n_examples = n_rows - 1
-    dim = n_cols - 1 if is_train else n_cols
+    dim = n_cols - 2 if is_train else n_cols - 1
     logger.debug('n_cols=%d' % n_cols)
+    logger.debug('dim=%d' % dim)
 
-
+    ids = []
     X_ret = np.zeros((n_examples, dim))
     y_ret = np.zeros(n_examples)
 
@@ -64,10 +63,12 @@ def my_read_file(fname, logger, is_train=True):
         csvreader = csv.reader(fr, delimiter=',')
         row_idx = 0
         for row in csvreader:
-            if row_idx == n_examples:
+            if row_idx == n_examples:   # for some extra newlines
                 break
             if row_idx > 0:
-                X = [float(ele) for ele in row[0:dim]]
+                exid = int(row[0])
+                ids.append(exid)
+                X = [float(ele) for ele in row[1:dim+1]]
                 X_ret[row_idx-1] = np.array(X)
                 if is_train:
                     y = float(row[dim])
@@ -76,7 +77,7 @@ def my_read_file(fname, logger, is_train=True):
             row_idx += 1
 
     logger.info('number of positives = %d' % (sum(y_ret)))
-    return X_ret, y_ret
+    return ids, X_ret, y_ret
 
 
 if __name__ == '__main__':
@@ -97,8 +98,8 @@ if __name__ == '__main__':
 
 
     # read data
-    X_train, y_train = my_read_file(train_file, logger, is_train=True)
-    X_test, y_test = my_read_file(test_file, logger, is_train=False)
+    train_ids, X_train, y_train = my_read_file(train_file, logger, is_train=True)
+    test_ids, X_test, y_test = my_read_file(test_file, logger, is_train=False)
 
     # normalization
     scaler = StandardScaler(with_mean=True, with_std=True)
@@ -140,10 +141,13 @@ if __name__ == '__main__':
     y_predict = classifier.predict(X_test)
 
     # save results
-    logger.info('dumping %s' % args.output_confidence)
-    pkl.dump(conf_score, open(args.output_confidence, 'wb'))
-    logger.info('dumping %s' % args.output_predict)
-    pkl.dump(y_predict, open(args.output_predict, 'wb'))
     logger.info('dumping %s' % args.output_model)
     pkl.dump(classifier, open(args.output_model, 'wb'))
+
+    with open(args.output_result, 'wb') as fw:
+        writer = csv.writer(fw, delimiter=',')
+        for row in zip(ids, y_predict):
+            writer.writerow(row)
+
+
 
