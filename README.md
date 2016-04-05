@@ -1,5 +1,5 @@
 # Santander
-# Author: I-Ta Lee, lee2226@purdue.edu
+# Author: I-Ta Lee
 # April 5th 2016
 #
 
