@@ -71,7 +71,7 @@ def my_read_file(fname, logger, is_train=True):
                 X = [float(ele) for ele in row[1:dim+1]]
                 X_ret[row_idx-1] = np.array(X)
                 if is_train:
-                    y = float(row[dim])
+                    y = float(row[dim+1])
                     y_ret[row_idx-1] = y
                     
             row_idx += 1
